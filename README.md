@@ -88,3 +88,5 @@ npm run dev:frontend
 - consolidar o frontend futuro com painel admin e cardapio digital
 - manter o sistema atual intacto
 # menuhub-delivery
+
+![Deploy Menuhub](https://github.com/regislopesrl-sudo/menuhub-delivery/actions/workflows/deploy.yml/badge.svg)
