@@ -1,0 +1,34 @@
+name: Deploy Menuhub
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Criar tar do projeto
+        run: |
+          tar czf /tmp/local-sistema.tar.gz .
+
+      - name: Copiar tar para o servidor
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.MENUHUB_SSH_KEY }}" > ~/.ssh/menuhub_key
+          chmod 600 ~/.ssh/menuhub_key
+          scp -i ~/.ssh/menuhub_key /tmp/local-sistema.tar.gz "${{ secrets.MENUHUB_SSH_USER }}@${{ secrets.MENUHUB_SSH_HOST }}:/tmp/local-sistema.tar.gz"
+
+      - name: Executar deploy remoto
+        run: |
+          ssh -i ~/.ssh/menuhub_key -o StrictHostKeyChecking=no "${{ secrets.MENUHUB_SSH_USER }}@${{ secrets.MENUHUB_SSH_HOST }}" <<'EOF'
+            cd /home/regis/sistema-delivery-futuro
+            ./scripts/sync-and-deploy.sh
+            sudo nginx -s reload
+            curl -i https://api.menuhub.net.br/health
+            curl -i https://api.menuhub.net.br/api/health
+          EOF

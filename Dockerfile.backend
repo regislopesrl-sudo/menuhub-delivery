@@ -1,0 +1,22 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package.json ./
+COPY apps/backend/package.json apps/backend/package.json
+COPY packages/shared-types/package.json packages/shared-types/package.json
+COPY packages/eslint-config/package.json packages/eslint-config/package.json
+COPY packages/tsconfig/package.json packages/tsconfig/package.json
+
+RUN npm install
+
+COPY . .
+
+WORKDIR /app/apps/backend
+
+RUN npm run build
+
+EXPOSE 3100
+
+CMD ["npm", "run", "start"]
+
