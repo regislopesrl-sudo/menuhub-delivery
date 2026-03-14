@@ -12,6 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Debug workspace
+        run: |
+          echo "workspace=$GITHUB_WORKSPACE"
+          pwd
+          ls -al
+
       - name: Criar tar do projeto
         run: |
           tar czf /tmp/local-sistema.tar.gz .
