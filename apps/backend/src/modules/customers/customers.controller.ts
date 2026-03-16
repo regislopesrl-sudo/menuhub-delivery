@@ -38,6 +38,12 @@ export class CustomersController {
     return this.customersService.getOrders(id);
   }
 
+  @Get('autocomplete/by-contact')
+  @RequirePermission('customers.view')
+  autocompleteByContact(@Query('q') q: string) {
+    return this.customersService.autocompleteByContact(q);
+  }
+
   @Delete(':id')
   @RequirePermission('customers.delete')
   remove(@Param('id') id: string) {

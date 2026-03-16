@@ -36,6 +36,24 @@ export class ReportsController {
     return this.reportsService.getDeliveryReport(query);
   }
 
+  @Get('delivery-dashboard')
+  @RequirePermission('reports.view')
+  getDeliveryDashboard(@Query() query: any) {
+    return this.reportsService.getDeliveryDashboard(query);
+  }
+
+  @Get('operations-dashboard')
+  @RequirePermission('reports.view')
+  getOperationsDashboard() {
+    return this.reportsService.getOperationsDashboard();
+  }
+
+  @Get('salon-dashboard')
+  @RequirePermission('reports.view')
+  getSalonDashboard() {
+    return this.reportsService.getSalonDashboard();
+  }
+
   @Get('crm')
   @RequirePermission('reports.view')
   getCrmReport(@Query() query: any) {

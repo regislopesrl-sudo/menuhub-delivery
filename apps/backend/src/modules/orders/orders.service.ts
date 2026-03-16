@@ -74,20 +74,40 @@ export class OrdersService {
   }
 
   async create(dto: CreateOrderDto) {
-    if (!dto.items.length) throw new BadRequestException('Pedido deve possuir pelo menos um item');
+    if (!dto.items?.length) {
+      throw new BadRequestException('Pedido deve possuir pelo menos um item');
+    }
+
     return this.prisma.$transaction(async (tx) => {
+      const productIds = dto.items.map((item) => item.productId);
+
       const products = await tx.product.findMany({
-        where: { id: { in: dto.items.map((item) => item.productId) }, deletedAt: null, isActive: true },
+        where: {
+          id: { in: productIds },
+          deletedAt: null,
+          isActive: true,
+        },
       });
-      const productMap = new Map(products.map((product) => [product.id, product]));
+
+      if (products.length !== productIds.length) {
+        throw new BadRequestException('Um ou mais produtos são inválidos');
+      }
+
+      const productMap = new Map(products.map((p) => [p.id, p]));
       let subtotal = new Prisma.Decimal(0);
+
       const itemsToCreate = dto.items.map((item) => {
         const product = productMap.get(item.productId);
-        if (!product) throw new BadRequestException(`Produto ${item.productId} não encontrado`);
+        if (!product) {
+          throw new BadRequestException(`Produto ${item.productId} não encontrado`);
+        }
+
         const unitPrice = new Prisma.Decimal(item.unitPrice ?? product.salePrice);
         const quantity = new Prisma.Decimal(item.quantity);
         const totalPrice = unitPrice.mul(quantity);
+
         subtotal = subtotal.add(totalPrice);
+
         return {
           productId: product.id,
           productNameSnapshot: product.name,
@@ -109,19 +129,81 @@ export class OrdersService {
             : undefined,
         };
       });
-      const countToday = await tx.order.count();
+
+      let deliveryAreaId: string | undefined;
+      let customerAddressId: string | undefined;
+      let deliveryFee = new Prisma.Decimal(0);
+
+      if (dto.orderType === 'delivery') {
+        if (!dto.delivery?.customerAddressId) {
+          throw new BadRequestException('Endereço é obrigatório para delivery');
+        }
+
+        const address = await tx.customerAddress.findUnique({
+          where: { id: dto.delivery.customerAddressId },
+        });
+
+        if (!address) {
+          throw new BadRequestException('Endereço do cliente não encontrado');
+        }
+
+        customerAddressId = address.id;
+
+        if (dto.delivery.deliveryAreaId) {
+          const area = await tx.deliveryArea.findUnique({
+            where: { id: dto.delivery.deliveryAreaId },
+          });
+
+          if (!area || !area.isActive) {
+            throw new BadRequestException('Área de entrega inválida');
+          }
+
+          deliveryAreaId = area.id;
+          deliveryFee = new Prisma.Decimal(dto.delivery.deliveryFee ?? area.deliveryFee);
+        } else {
+          const normalizedCep = String(address.zipCode ?? '').replace(/\D/g, '');
+
+          const areas = await tx.deliveryArea.findMany({
+            where: { isActive: true },
+            orderBy: { zipCodeStart: 'asc' },
+          });
+
+          const matchedArea = areas.find(
+            (item) =>
+              normalizedCep >= item.zipCodeStart &&
+              normalizedCep <= item.zipCodeEnd,
+          );
+
+          if (!matchedArea) {
+            throw new BadRequestException('CEP fora da área de entrega');
+          }
+
+          deliveryAreaId = matchedArea.id;
+          deliveryFee = new Prisma.Decimal(matchedArea.deliveryFee);
+        }
+      }
+
+      const countToday = await tx.order.count({
+        where: {
+          createdAt: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+          },
+        },
+      });
+
       const orderNumber = String(countToday + 1).padStart(6, '0');
       const discountAmount = new Prisma.Decimal(0);
-      const deliveryFee = new Prisma.Decimal(dto.delivery?.deliveryFee ?? 0);
       const extraFee = new Prisma.Decimal(0);
       const totalAmount = subtotal.sub(discountAmount).add(deliveryFee).add(extraFee);
+
       return tx.order.create({
         data: {
           companyId: DEFAULT_COMPANY_ID,
           branchId: DEFAULT_BRANCH_ID,
           customerId: dto.customerId,
+          customerAddressId,
+          deliveryAreaId,
           tableId: dto.tableId,
-          commandId: dto.commandId,
           orderNumber,
           orderType: this.mapOrderType(dto.orderType),
           channel: dto.channel,
@@ -133,7 +215,9 @@ export class OrdersService {
           totalAmount,
           notes: dto.notes,
           internalNotes: dto.internalNotes,
-          items: { create: itemsToCreate },
+          items: {
+            create: itemsToCreate,
+          },
           payments: dto.payments?.length
             ? {
                 create: dto.payments.map((payment) => ({
@@ -145,10 +229,20 @@ export class OrdersService {
               }
             : undefined,
           statusLogs: {
-            create: { previousStatus: null, newStatus: OrderStatus.PENDING_CONFIRMATION, notes: 'Pedido criado' },
+            create: {
+              previousStatus: null,
+              newStatus: OrderStatus.PENDING_CONFIRMATION,
+              notes: 'Pedido criado',
+            },
           },
         },
-        include: { items: { include: { addons: true } }, payments: true, statusLogs: true },
+        include: {
+          customer: true,
+          customerAddress: true,
+          deliveryArea: true,
+          items: true,
+          payments: true,
+        },
       });
     });
   }

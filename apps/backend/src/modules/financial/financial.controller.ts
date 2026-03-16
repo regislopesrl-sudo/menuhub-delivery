@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { RequirePermission } from '@/common/decorators/require-permission.decorator';
 import { FinancialService } from './financial.service';
 import { CloseCashRegisterDto } from './dto/close-cash-register.dto';
@@ -61,8 +61,7 @@ export class FinancialController {
 
   @Get('financial/dashboard')
   @RequirePermission('financial.view')
-  getDashboard() {
-    return this.financialService.getDashboard();
+  getDashboard(@Query() query: any) {
+    return this.financialService.getDashboard(query);
   }
 }
-

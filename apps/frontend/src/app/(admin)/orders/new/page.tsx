@@ -1,21 +1,35 @@
-'use client';
+import OrdersNewPageClient, {
+  OrdersNewPageClientProps,
+} from './orders-new-client';
 
-import { PermissionGuard } from '@/components/auth/permission-guard';
-import { OrderCreateForm } from '@/components/forms/order-create-form';
+const getFirst = (value?: string | string[]) =>
+  Array.isArray(value) ? value[0] : value;
 
-export default function NewOrderPage() {
+type SearchParams = {
+  [key: string]: string | string[] | undefined;
+};
+
+type PageInput = {
+  searchParams?: Promise<SearchParams | undefined>;
+};
+
+export default async function Page({ searchParams }: PageInput) {
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const tableId = getFirst(resolvedSearchParams.tableId);
+  const commandId = getFirst(resolvedSearchParams.commandId);
+  const initialOrderType = commandId
+    ? 'command'
+    : tableId
+    ? 'table'
+    : undefined;
+  const initialChannel = commandId ? 'command' : 'admin';
+
   return (
-    <PermissionGuard permission="orders.create">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Novo pedido</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Pedido com cliente, endereço, pagamento e carrinho.
-          </p>
-        </div>
-
-        <OrderCreateForm />
-      </div>
-    </PermissionGuard>
+    <OrdersNewPageClient
+      initialTableId={tableId ?? undefined}
+      initialCommandId={commandId ?? undefined}
+      initialOrderType={initialOrderType as OrdersNewPageClientProps['initialOrderType']}
+      initialChannel={initialChannel}
+    />
   );
 }

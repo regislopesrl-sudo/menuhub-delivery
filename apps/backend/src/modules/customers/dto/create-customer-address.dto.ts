@@ -1,4 +1,6 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+'use strict';
+
+import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateCustomerAddressDto {
   @IsOptional()
@@ -8,10 +10,6 @@ export class CreateCustomerAddressDto {
   @IsOptional()
   @IsString()
   zipCode?: string;
-
-  @IsOptional()
-  @IsUUID()
-  deliveryAreaId?: string;
 
   @IsString()
   street!: string;
@@ -35,10 +33,6 @@ export class CreateCustomerAddressDto {
   @IsOptional()
   @IsString()
   reference?: string;
-
-  @IsOptional()
-  @IsString()
-  ibgeCode?: string;
 
   @IsOptional()
   @IsNumber()

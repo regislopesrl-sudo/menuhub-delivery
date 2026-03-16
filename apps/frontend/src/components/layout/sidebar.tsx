@@ -28,17 +28,23 @@ const sections = [
       { label: 'Fidelidade', href: '/loyalty', permission: 'loyalty.view' },
     ],
   },
-  {
-    title: 'Operacao',
-    items: [
-      { label: 'Estoque', href: '/stock', permission: 'stock.view' },
-      { label: 'Compras', href: '/purchasing', permission: 'purchasing.view' },
-      { label: 'Fornecedores', href: '/suppliers', permission: 'purchasing.view' },
-      { label: 'Producao', href: '/production', permission: 'production.view' },
-      { label: 'Delivery', href: '/delivery', permission: 'delivery.view' },
-      { label: 'WhatsApp', href: '/whatsapp', permission: 'whatsapp.view' },
-    ],
-  },
+          {
+            title: 'Operacao',
+            items: [
+              { label: 'Estoque', href: '/stock', permission: 'stock.view' },
+              { label: 'Compras', href: '/purchasing', permission: 'purchasing.view' },
+              { label: 'Fornecedores', href: '/suppliers', permission: 'purchasing.view' },
+              { label: 'Recebimentos', href: '/purchasing/receipts', permission: 'purchasing.view' },
+              { label: 'Producao', href: '/production', permission: 'production.view' },
+              { label: 'Mesas/Comandas', href: '/tables', permission: 'orders.view' },
+              { label: 'Delivery', href: '/delivery', permission: 'delivery.view' },
+              { label: 'Operação', href: '/operations', permission: 'reports.view' },
+              { label: 'Salão', href: '/salon', permission: 'reports.view' },
+              { label: 'Áreas de entrega', href: '/delivery-areas', permission: 'delivery.view' },
+          { label: 'Checkout delivery', href: '/checkout/delivery', permission: 'orders.create' },
+          { label: 'WhatsApp', href: '/whatsapp', permission: 'whatsapp.view' },
+        ],
+      },
   {
     title: 'Gestao',
     items: [

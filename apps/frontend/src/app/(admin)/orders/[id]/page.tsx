@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { PermissionGuard } from '@/components/auth/permission-guard';
 import { OrderPrintButton } from '@/components/orders/order-print-button';
+import { OrderThermalPrintButton } from '@/components/orders/order-thermal-print-button';
 import { OrderCancelForm } from '@/components/forms/order-cancel-form';
 import { OrderPaymentForm } from '@/components/forms/order-payment-form';
 import { OrderStatusForm } from '@/components/forms/order-status-form';
@@ -145,6 +146,10 @@ export default function OrderDetailPage() {
                 </div>
 
                 <OrderPrintButton order={order} />
+                <div className="space-y-2">
+                  <OrderThermalPrintButton order={order} mode="kitchen" />
+                  <OrderThermalPrintButton order={order} mode="counter" />
+                </div>
                 <OrderStatusForm orderId={String(params.id)} onSuccess={load} />
                 <OrderPaymentForm orderId={String(params.id)} onSuccess={load} />
                 <OrderCancelForm orderId={String(params.id)} onSuccess={load} />

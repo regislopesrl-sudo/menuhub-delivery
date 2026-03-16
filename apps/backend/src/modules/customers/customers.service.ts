@@ -70,7 +70,6 @@ export class CustomersService {
               create: dto.addresses.map((address) => ({
                 label: address.label,
                 zipCode: address.zipCode,
-                deliveryAreaId: address.deliveryAreaId,
                 street: address.street,
                 number: address.number,
                 complement: address.complement,
@@ -78,7 +77,6 @@ export class CustomersService {
                 city: address.city,
                 state: address.state,
                 reference: address.reference,
-                ibgeCode: address.ibgeCode,
                 latitude: address.latitude,
                 longitude: address.longitude,
                 isDefault: address.isDefault ?? false,
@@ -110,7 +108,6 @@ export class CustomersService {
               create: dto.addresses.map((address) => ({
                 label: address.label,
                 zipCode: address.zipCode,
-                deliveryAreaId: address.deliveryAreaId,
                 street: address.street,
                 number: address.number,
                 complement: address.complement,
@@ -118,7 +115,6 @@ export class CustomersService {
                 city: address.city,
                 state: address.state,
                 reference: address.reference,
-                ibgeCode: address.ibgeCode,
                 latitude: address.latitude,
                 longitude: address.longitude,
                 isDefault: address.isDefault ?? false,
@@ -136,6 +132,30 @@ export class CustomersService {
       where: { customerId: id, deletedAt: null },
       include: { items: { include: { addons: true } }, payments: true, statusLogs: true },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async autocompleteByContact(q: string) {
+    if (!q?.trim()) return [];
+
+    const normalized = q.trim();
+
+    return this.prisma.customer.findMany({
+      where: {
+        deletedAt: null,
+        OR: [
+          { phone: { contains: normalized, mode: 'insensitive' as const } },
+          { whatsapp: { contains: normalized, mode: 'insensitive' as const } },
+          { name: { contains: normalized, mode: 'insensitive' as const } },
+        ],
+      },
+      include: {
+        addresses: {
+          orderBy: { isDefault: 'desc' },
+        },
+      },
+      take: 10,
+      orderBy: { name: 'asc' },
     });
   }
 

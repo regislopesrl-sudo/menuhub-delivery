@@ -85,4 +85,40 @@ export class DeliveryAreasService {
       estimatedMinutes: area.estimatedMinutes,
     };
   }
+
+  async calculateRoute(dto: {
+    originLatitude: number;
+    originLongitude: number;
+    destinationLatitude: number;
+    destinationLongitude: number;
+  }) {
+    const [originLat, originLng, destLat, destLng] = [
+      Number(dto.originLatitude),
+      Number(dto.originLongitude),
+      Number(dto.destinationLatitude),
+      Number(dto.destinationLongitude),
+    ];
+
+    if ([originLat, originLng, destLat, destLng].some((value) => Number.isNaN(value))) {
+      throw new BadRequestException('Coordenadas inválidas');
+    }
+
+    const url = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=false&alternatives=false&steps=false`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new BadRequestException('Falha ao calcular rota');
+    }
+
+    const data = await response.json();
+    const route = data?.routes?.[0];
+    if (!route) {
+      throw new NotFoundException('Rota não encontrada');
+    }
+
+    return {
+      distance: route.distance ?? 0,
+      duration: route.duration ?? 0,
+    };
+  }
 }

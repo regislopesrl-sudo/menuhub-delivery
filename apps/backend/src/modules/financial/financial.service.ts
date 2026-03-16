@@ -109,15 +109,24 @@ export class FinancialService {
     });
   }
 
-  async getDashboard() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  async getDashboard(query?: { start?: string; end?: string }) {
+    const start = query?.start
+      ? new Date(query.start)
+      : new Date(new Date().setHours(0, 0, 0, 0));
+    const end = query?.end ? new Date(`${query.end}T23:59:59`) : new Date();
 
-    const [sales, receivable, payable] = await Promise.all([
+    const [
+      orders,
+      receivablesPending,
+      payablesPending,
+      openCashRegister,
+      receivablesInPeriod,
+      payablesInPeriod,
+    ] = await Promise.all([
       this.prisma.order.aggregate({
         _sum: { totalAmount: true },
         where: {
-          createdAt: { gte: today },
+          createdAt: { gte: start, lte: end },
           status: { not: 'CANCELED' as any },
         },
       }),
@@ -129,12 +138,31 @@ export class FinancialService {
         _sum: { amount: true },
         where: { status: 'pending' },
       }),
+      this.prisma.cashRegister.findFirst({
+        where: { status: 'open' },
+        orderBy: { openedAt: 'desc' },
+      }),
+      this.prisma.accountsReceivable.aggregate({
+        _sum: { amount: true },
+        where: {
+          createdAt: { gte: start, lte: end },
+        },
+      }),
+      this.prisma.accountsPayable.aggregate({
+        _sum: { amount: true },
+        where: {
+          createdAt: { gte: start, lte: end },
+        },
+      }),
     ]);
 
     return {
-      salesToday: Number(sales._sum.totalAmount ?? 0),
-      receivablePending: Number(receivable._sum.amount ?? 0),
-      payablePending: Number(payable._sum.amount ?? 0),
+      salesToday: Number(orders._sum.totalAmount ?? 0),
+      receivablesPending: Number(receivablesPending._sum.amount ?? 0),
+      payablesPending: Number(payablesPending._sum.amount ?? 0),
+      receivablesInPeriod: Number(receivablesInPeriod._sum.amount ?? 0),
+      payablesInPeriod: Number(payablesInPeriod._sum.amount ?? 0),
+      openCashRegister,
     };
   }
 }

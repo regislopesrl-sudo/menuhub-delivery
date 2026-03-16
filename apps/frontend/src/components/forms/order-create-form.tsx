@@ -25,17 +25,53 @@ type CheckoutAddress = {
   ibgeCode?: string;
 };
 
-export function OrderCreateForm() {
+type OrderType =
+  | 'delivery'
+  | 'counter'
+  | 'pickup'
+  | 'table'
+  | 'command'
+  | 'whatsapp'
+  | 'kiosk'
+  | 'qr';
+
+type OrderFormState = {
+  customerId: string;
+  customerAddressId: string;
+  orderType: OrderType;
+  channel: string;
+  tableId: string;
+  commandId: string;
+  paymentMethod: string;
+  notes: string;
+  useNewAddress: boolean;
+};
+
+type CreateFormProps = {
+  initialTableId?: string;
+  initialCommandId?: string;
+  initialOrderType?: OrderType;
+  initialChannel?: string;
+};
+
+export function OrderCreateForm({
+  initialTableId,
+  initialCommandId,
+  initialOrderType,
+  initialChannel = 'admin',
+}: CreateFormProps) {
   const { showToast } = useToast();
   const [products, setProducts] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [addresses, setAddresses] = useState<any[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<OrderFormState>({
     customerId: '',
     customerAddressId: '',
-    orderType: 'delivery',
-    channel: 'admin',
+    orderType: initialOrderType ?? 'delivery',
+    channel: initialChannel,
+    tableId: initialTableId ?? '',
+    commandId: initialCommandId ?? '',
     paymentMethod: 'pix',
     notes: '',
     useNewAddress: false,
@@ -61,6 +97,8 @@ export function OrderCreateForm() {
     deliveryFee?: number;
     estimatedMinutes?: number;
   } | null>(null);
+  const [linkedTableId, setLinkedTableId] = useState(initialTableId ?? '');
+  const [linkedCommandId, setLinkedCommandId] = useState(initialCommandId ?? '');
 
   useEffect(() => {
     api
@@ -239,6 +277,8 @@ export function OrderCreateForm() {
         customerId: form.customerId || undefined,
         orderType: form.orderType,
         channel: form.channel,
+        tableId: linkedTableId || undefined,
+        commandId: linkedCommandId || undefined,
         notes: form.notes || undefined,
         delivery:
           form.orderType === 'delivery' && customerAddressId
@@ -264,8 +304,10 @@ export function OrderCreateForm() {
       setForm({
         customerId: '',
         customerAddressId: '',
-        orderType: 'delivery',
-        channel: 'admin',
+        orderType: (initialOrderType ?? 'delivery') as OrderType,
+        channel: initialChannel,
+        tableId: initialTableId ?? '',
+        commandId: initialCommandId ?? '',
         paymentMethod: 'pix',
         notes: '',
         useNewAddress: false,
@@ -289,6 +331,18 @@ export function OrderCreateForm() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (initialTableId) {
+      setLinkedTableId(initialTableId);
+      setForm((prev) => ({ ...prev, orderType: 'table' }));
+    }
+
+    if (initialCommandId) {
+      setLinkedCommandId(initialCommandId);
+      setForm((prev) => ({ ...prev, orderType: 'command', channel: initialChannel }));
+    }
+  }, [initialTableId, initialCommandId, initialChannel]);
 
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_380px]">
@@ -319,7 +373,12 @@ export function OrderCreateForm() {
 
             <select
               value={form.orderType}
-              onChange={(e) => setForm((prev) => ({ ...prev, orderType: e.target.value }))}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  orderType: e.target.value as OrderType,
+                }))
+              }
               className="rounded-xl border border-slate-300 px-4 py-3"
             >
               <option value="delivery">Delivery</option>

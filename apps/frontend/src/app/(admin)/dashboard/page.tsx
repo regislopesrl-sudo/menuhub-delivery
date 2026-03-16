@@ -6,6 +6,7 @@ import { PermissionGuard } from '@/components/auth/permission-guard';
 import { OrdersByChannelChart } from '@/components/orders/orders-by-channel-chart';
 import { OrdersByStatusChart } from '@/components/orders/orders-by-status-chart';
 import { KpiCard } from '@/components/ui/kpi-card';
+import { DeliveryAreaChart } from '@/components/charts/delivery-area-chart';
 import { api } from '@/services/api';
 
 export default function DashboardPage() {
@@ -14,20 +15,30 @@ export default function DashboardPage() {
   const [stock, setStock] = useState<any>(null);
   const [salesPeriod, setSalesPeriod] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deliveryDashboard, setDeliveryDashboard] = useState<any>(null);
 
   useEffect(() => {
+    const ordersQuery = new URLSearchParams();
+    const salesPeriodQuery = new URLSearchParams();
+
     Promise.all([
       api.get('/financial/dashboard').catch(() => null),
-      api.get('/reports/orders').catch(() => null),
+      api.get(`/reports/orders?${ordersQuery.toString()}`).catch(() => null),
       api.get('/reports/stock').catch(() => null),
-      api.get('/reports/sales-period').catch(() => []),
+      api.get(`/reports/sales-period?${salesPeriodQuery.toString()}`).catch(() => []),
+      api
+        .get(`/reports/delivery-dashboard?${salesPeriodQuery.toString()}`)
+        .catch(() => null),
     ])
-      .then(([financialData, ordersData, stockData, salesPeriodData]) => {
-        setFinancial(financialData);
-        setOrders(ordersData);
-        setStock(stockData);
-        setSalesPeriod(salesPeriodData);
-      })
+      .then(
+        ([financialData, ordersData, stockData, salesPeriodData, deliveryData]) => {
+          setFinancial(financialData);
+          setOrders(ordersData);
+          setStock(stockData);
+          setSalesPeriod(salesPeriodData);
+          setDeliveryDashboard(deliveryData);
+        },
+      )
       .finally(() => setLoading(false));
   }, []);
 
@@ -62,11 +73,31 @@ export default function DashboardPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-              <OrdersByStatusChart data={orders?.byStatus ?? []} />
-              <OrdersByChannelChart data={orders?.byChannel ?? []} />
+              <SalesPeriodChart data={salesPeriod} />
+              <DeliveryAreaChart data={deliveryDashboard?.byArea ?? []} />
             </div>
 
-            <SalesPeriodChart data={salesPeriod} />
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+              <KpiCard title="Pedidos" value={orders?.totalOrders ?? 0} />
+              <KpiCard
+                title="Vendas"
+                value={`R$ ${Number(orders?.totalSales ?? 0).toFixed(2)}`}
+              />
+              <KpiCard
+                title="Receber pendente"
+                value={`R$ ${Number(financial?.receivablePending ?? 0).toFixed(2)}`}
+              />
+              <KpiCard
+                title="Itens em estoque baixo"
+                value={stock?.lowStock?.length ?? 0}
+              />
+              <KpiCard
+                title="Tempo médio delivery"
+                value={`${Number(
+                  deliveryDashboard?.averageDeliveryMinutes ?? 0,
+                ).toFixed(0)} min`}
+              />
+            </div>
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

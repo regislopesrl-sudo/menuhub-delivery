@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DEFAULT_COMPANY_ID } from '@/common/default-context';
 import { PrismaService } from '@/database/prisma.service';
+import { RedisService } from '@/database/redis.service';
 import { DeliveryFeesService } from '../delivery-fees/delivery-fees.service';
 import { MenuService } from '../menu/menu.service';
 import { OrdersService } from '../orders/orders.service';
@@ -13,6 +14,9 @@ type CreatedOrder = {
   total: number;
 };
 
+const IDEMPOTENCY_PREFIX = 'orders-core:idempotency:';
+const IDEMPOTENCY_TTL_SECONDS = 60 * 60;
+
 @Injectable()
 export class OrdersCoreService {
   private readonly processedKeys = new Map<string, CreatedOrder>();
@@ -22,6 +26,7 @@ export class OrdersCoreService {
     private readonly deliveryFeesService: DeliveryFeesService,
     private readonly ordersService: OrdersService,
     private readonly prisma: PrismaService,
+    private readonly redisService: RedisService,
   ) {}
 
   async quote(dto: QuoteOrderDto) {
@@ -109,8 +114,16 @@ export class OrdersCoreService {
   }
 
   async create(dto: CreateOrderDto): Promise<CreatedOrder> {
+    const cacheKey = `${IDEMPOTENCY_PREFIX}${dto.idempotencyKey}`;
+
     if (this.processedKeys.has(dto.idempotencyKey)) {
       return this.processedKeys.get(dto.idempotencyKey)!;
+    }
+
+    const fromRedis = await this.redisService.get(cacheKey);
+    if (fromRedis) {
+      this.processedKeys.set(dto.idempotencyKey, fromRedis);
+      return fromRedis;
     }
 
     if (dto.fulfillment.type === 'DELIVERY' && !dto.address) {
@@ -184,6 +197,7 @@ export class OrdersCoreService {
     };
 
     this.processedKeys.set(dto.idempotencyKey, created);
+    await this.redisService.set(cacheKey, created, IDEMPOTENCY_TTL_SECONDS);
     return created;
   }
 }
